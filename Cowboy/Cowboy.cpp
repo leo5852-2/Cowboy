@@ -1,16 +1,19 @@
-﻿#include <bangtal.h>
+﻿#define _CRT_SECURE_NO_WARNINGS
+
+#include <bangtal.h>
 #include <stdio.h>
 #include <stdlib.h>
-#include <time.h>>
+#include <time.h>
 
 #define wallSize 80
 
 SceneID gamestage, backgound;
-ObjectID wall[72], wallX[72], wallY[72], player, enemyIcon[3], enemy[3];
-TimerID timer, actionTimer;
+ObjectID wall[72], wallX[72], wallY[72], player, enemyIcon[3], enemy_stand[3], enemy_move[3], enemy_shoot[3];
+TimerID timer1, standTimer, moveTimer;
  
 int playerX = 100, playerY = 120, enemyIconX[3] = {520, 120, 320}, enemyIconY[3] = {200, 360, 640}, stage = 10;
-bool Wpress = 0, Apress = 0, Spress = 0, Dpress = 0, moveable = 1;
+bool Wpress = 0, Apress = 0, Spress = 0, Dpress = 0, moveable = 1, win = 0;
+float moveTime[3] = {1.0f, 0.5f, 0.3f};
 
 ObjectID createObject(const char* image, SceneID scene, int x, int y, bool shown) {
 	ObjectID object = createObject(image);
@@ -28,7 +31,7 @@ void keyboardCallback(KeyCode code, KeyState state)
 	if (code == KeyCode::KEY_W && state == KeyState::KEY_PRESSED)
 	{
 		Wpress = 1;
-		startTimer(timer);
+		startTimer(timer1);
 	}
 	else if (code == KeyCode::KEY_W && state == KeyState::KEY_RELEASED)
 	{
@@ -38,7 +41,7 @@ void keyboardCallback(KeyCode code, KeyState state)
 	else if (code == KeyCode::KEY_A && state == KeyState::KEY_PRESSED)
 	{
 		Apress = 1;
-		startTimer(timer);
+		startTimer(timer1);
 	}
 	else if (code == KeyCode::KEY_A && state == KeyState::KEY_RELEASED)
 	{
@@ -48,7 +51,7 @@ void keyboardCallback(KeyCode code, KeyState state)
 	else if (code == KeyCode::KEY_S && state == KeyState::KEY_PRESSED)
 	{
 		Spress = 1;
-		startTimer(timer);
+		startTimer(timer1);
 	}
 	else if (code == KeyCode::KEY_S && state == KeyState::KEY_RELEASED)
 	{
@@ -58,7 +61,7 @@ void keyboardCallback(KeyCode code, KeyState state)
 	else if (code == KeyCode::KEY_D && state == KeyState::KEY_PRESSED)
 	{
 		Dpress = 1;
-		startTimer(timer);
+		startTimer(timer1);
 	}
 	else if (code == KeyCode::KEY_D && state == KeyState::KEY_RELEASED)
 	{
@@ -66,20 +69,27 @@ void keyboardCallback(KeyCode code, KeyState state)
 	}
 }
 
+void mouseCallback(ObjectID object, int x, int y, MouseAction action)
+{
+	if (object == enemy_move[stage]) 
+	{
+		stopTimer(moveTimer);
+	}
+}
+
 void fight()
 {
 	srand(time(NULL));
 	int t = rand() % 5 + 3;
-	actionTimer = createTimer(1.0f);
-	setTimer(actionTimer, t);
-	startTimer(actionTimer);
-
+	standTimer = createTimer(1.0f);
+	setTimer(standTimer, t);
+	startTimer(standTimer);
 }
 
 void enterStage(int stage)
 {
 	enterScene(backgound);
-	showObject(enemy[stage]);
+	showObject(enemy_stand[stage]);
 	fight();
 }
 
@@ -98,17 +108,30 @@ void detect()
 
 void timerCallback(TimerID timer)
 {
-	locateObject(player, gamestage, playerX, playerY);
-	setTimer(timer, 0.01f);
-	startTimer(timer);
-	detect();
-
-	if (moveable == 1)
+	if (timer == timer1)
 	{
-		if (Wpress == 1) playerY = playerY + 2;
-		else if (Apress == 1) playerX = playerX - 2;
-		else if (Spress == 1) playerY = playerY - 2;
-		else if (Dpress == 1) playerX = playerX + 2;
+		locateObject(player, gamestage, playerX, playerY);
+		setTimer(timer, 0.01f);
+		startTimer(timer);
+		detect();
+		if (moveable == 1)
+		{
+			if (Wpress == 1) playerY = playerY + 2;
+			else if (Apress == 1) playerX = playerX - 2;
+			else if (Spress == 1) playerY = playerY - 2;
+			else if (Dpress == 1) playerX = playerX + 2;
+		}
+	}
+	else if (timer == standTimer)
+	{
+		hideObject(enemy_stand[stage]);
+		showObject(enemy_move[stage]);
+		setTimer(moveTimer, moveTime[stage]);
+		startTimer(moveTimer);
+	}
+	else if (moveTimer)
+	{
+
 	}
 }
 
@@ -155,24 +178,29 @@ int main()
 
 	setKeyboardCallback(keyboardCallback);
 	setTimerCallback(timerCallback);
+	setMouseCallback(mouseCallback);
 
 	gamestage = createScene("");
 	backgound = createScene("background", "object/background.png");
 
 	player = createObject("object/player_icon.png", gamestage, playerX, playerY, true);
 	
-	enemyIcon[0] = createObject("object/enemy_icon1.png", gamestage, enemyIconX[0], enemyIconY[0], true);
-	enemyIcon[1] = createObject("object/enemy_icon1.png", gamestage, enemyIconX[1], enemyIconY[1], true);
-	enemyIcon[2] = createObject("object/enemy_icon1.png", gamestage, enemyIconX[2], enemyIconY[2], true);
-	
-	enemy[0] = createObject("object/enemy0_stand.png", backgound, 150, 200, false);
-	enemy[1] = createObject("object/enemy1_stand.png", backgound, 150, 200, false);
-	enemy[2] = createObject("object/enemy2_stand.png", backgound, 150, 200, false);
-
+	char stand[50], move[50], shoot[50];
+	for (int i = 0; i < 3; i++)
+	{
+		sprintf(stand, "object/enemy%d_stand.png", i);
+		sprintf(move, "object/enemy%d_move.png", i);
+		sprintf(shoot, "object/enemy%d_shoot.png", i);
+		enemyIcon[i] = createObject("object/enemy_icon1.png", gamestage, enemyIconX[i], enemyIconY[i], true);
+		enemy_stand[i] = createObject(stand, backgound, 150, 200, false);
+		enemy_move[i] = createObject(move, backgound, 150, 200, false);
+		enemy_shoot[i] = createObject(shoot, backgound, 150, 200, false);
+	}
+		
 	Mapping();
 	
-	timer = createTimer(0.01f);
-
+	timer1 = createTimer(0.01f);
+	 
 	startGame(gamestage);
 
 }
