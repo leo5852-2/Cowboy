@@ -1,10 +1,13 @@
 ﻿#include <bangtal.h>
 #include <stdio.h>
+#include <stdlib.h>
+#include <time.h>>
+
 #define wallSize 80
 
 SceneID gamestage, backgound;
 ObjectID wall[72], wallX[72], wallY[72], player, enemyIcon[3], enemy[3];
-TimerID timer;
+TimerID timer, actionTimer;
  
 int playerX = 100, playerY = 120, enemyIconX[3] = {520, 120, 320}, enemyIconY[3] = {200, 360, 640}, stage = 10;
 bool Wpress = 0, Apress = 0, Spress = 0, Dpress = 0, moveable = 1;
@@ -63,17 +66,28 @@ void keyboardCallback(KeyCode code, KeyState state)
 	}
 }
 
+void fight()
+{
+	srand(time(NULL));
+	int t = rand() % 5 + 3;
+	actionTimer = createTimer(1.0f);
+	setTimer(actionTimer, t);
+	startTimer(actionTimer);
+
+}
+
 void enterStage(int stage)
 {
-	backgound = createScene("background", "object/background.png");
 	enterScene(backgound);
+	showObject(enemy[stage]);
+	fight();
 }
 
 void detect()
 {
 	for (int i = 0; i < 3; i++)
 	{
-		if (enemyIconX[i] - 10 <= playerX <= enemyIconX[i] + 10 && enemyIconY[i] - 10 <= playerY <= enemyIconY[i] + 10)
+		if (playerX == enemyIconX[i] && playerY == enemyIconY[i])
 		{
 			moveable = 0;
 			stage = i;
@@ -143,12 +157,18 @@ int main()
 	setTimerCallback(timerCallback);
 
 	gamestage = createScene("");
-	
+	backgound = createScene("background", "object/background.png");
+
 	player = createObject("object/player_icon.png", gamestage, playerX, playerY, true);
+	
 	enemyIcon[0] = createObject("object/enemy_icon1.png", gamestage, enemyIconX[0], enemyIconY[0], true);
 	enemyIcon[1] = createObject("object/enemy_icon1.png", gamestage, enemyIconX[1], enemyIconY[1], true);
 	enemyIcon[2] = createObject("object/enemy_icon1.png", gamestage, enemyIconX[2], enemyIconY[2], true);
 	
+	enemy[0] = createObject("object/enemy0_stand.png", backgound, 150, 200, false);
+	enemy[1] = createObject("object/enemy1_stand.png", backgound, 150, 200, false);
+	enemy[2] = createObject("object/enemy2_stand.png", backgound, 150, 200, false);
+
 	Mapping();
 	
 	timer = createTimer(0.01f);
