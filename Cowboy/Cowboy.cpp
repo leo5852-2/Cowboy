@@ -12,7 +12,7 @@ ObjectID wall[72], wallX[72], wallY[72], player, enemyIcon[3], enemy_stand[3], e
 TimerID timer1, standTimer, moveTimer;
  
 int playerX = 100, playerY = 120, enemyIconX[3] = {520, 120, 320}, enemyIconY[3] = {200, 360, 640}, stage = 10;
-bool Wpress = 0, Apress = 0, Spress = 0, Dpress = 0, moveable = 1, win = 0;
+bool Wpress = 0, Apress = 0, Spress = 0, Dpress = 0, moveable = 1, win = 0, fighting = 0;
 float moveTime[3] = {1.0f, 0.5f, 0.3f};
 
 ObjectID createObject(const char* image, SceneID scene, int x, int y, bool shown) {
@@ -79,10 +79,13 @@ void mouseCallback(ObjectID object, int x, int y, MouseAction action)
 
 void fight()
 {
+	fighting = 1;
+	
 	srand(time(NULL));
 	int t = rand() % 5 + 3;
-	standTimer = createTimer(1.0f);
-	setTimer(standTimer, t);
+	
+
+	setTimer(standTimer, (float)t);
 	startTimer(standTimer);
 }
 
@@ -97,8 +100,9 @@ void detect()
 {
 	for (int i = 0; i < 3; i++)
 	{
-		if (playerX == enemyIconX[i] && playerY == enemyIconY[i])
+		if (playerX == enemyIconX[i] && playerY == enemyIconY[i] && fighting == 0)
 		{
+			stopTimer(timer1);
 			moveable = 0;
 			stage = i;
 			enterStage(stage);
@@ -111,9 +115,10 @@ void timerCallback(TimerID timer)
 	if (timer == timer1)
 	{
 		locateObject(player, gamestage, playerX, playerY);
+		detect();
 		setTimer(timer, 0.01f);
 		startTimer(timer);
-		detect();
+		
 		if (moveable == 1)
 		{
 			if (Wpress == 1) playerY = playerY + 2;
@@ -129,10 +134,12 @@ void timerCallback(TimerID timer)
 		setTimer(moveTimer, moveTime[stage]);
 		startTimer(moveTimer);
 	}
-	else if (moveTimer)
+	else if (timer == moveTimer)
 	{
-
+		hideObject(enemy_move[stage]);
+		showObject(enemy_shoot[stage]);
 	}
+
 }
 
 void Mapping() 
@@ -200,7 +207,9 @@ int main()
 	Mapping();
 	
 	timer1 = createTimer(0.01f);
-	 
+	standTimer = createTimer(1.0f); 
+	moveTimer = createTimer(1.0f);
+
 	startGame(gamestage);
 
 }
