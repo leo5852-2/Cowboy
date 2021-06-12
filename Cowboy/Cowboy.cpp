@@ -7,11 +7,11 @@
 
 #define wallSize 80
 
-SceneID gamestage, backgound;
-ObjectID wall[72], wallX[72], wallY[72], player, enemyIcon[3], enemy_stand[3], enemy_move[3], enemy_shoot[3];
-TimerID timer1, standTimer, moveTimer;
+SceneID gamestage, background;
+ObjectID wall[72], wallX[72], wallY[72], player, enemyIcon[3], enemy_stand[3], enemy_move[3], enemy_shoot[3], blast, wound;
+TimerID timer1, standTimer, moveTimer, deathTimer;
  
-int playerX = 100, playerY = 120, enemyIconX[3] = {520, 120, 320}, enemyIconY[3] = {200, 360, 640}, stage = 10;
+int playerX = 100, playerY = 120, enemyIconX[3] = { 520, 120, 320 }, enemyIconY[3] = { 200, 360, 540 }, woundX[2] = {390, 250}, stage = -1;
 bool Wpress = 0, Apress = 0, Spress = 0, Dpress = 0, moveable = 1, win = 0, fighting = 0;
 float moveTime[3] = {1.0f, 0.5f, 0.3f};
 
@@ -74,6 +74,12 @@ void mouseCallback(ObjectID object, int x, int y, MouseAction action)
 	if (object == enemy_move[stage]) 
 	{
 		stopTimer(moveTimer);
+		locateObject(wound, background, woundX[stage], 350);
+		showObject(wound);
+		showMessage("YOU WIN!");
+		win = 1;
+		setTimer(deathTimer, 1.0f);
+		startTimer(deathTimer);
 	}
 }
 
@@ -84,34 +90,50 @@ void fight()
 	srand(time(NULL));
 	int t = rand() % 5 + 3;
 	
-
 	setTimer(standTimer, (float)t);
 	startTimer(standTimer);
 }
 
 void enterStage(int stage)
 {
-	enterScene(backgound);
+	enterScene(background);
 	showObject(enemy_stand[stage]);
-	fight();
+}
+
+void clearStage() 
+{
+	for (int a = 0; a < 3; a++)
+	{
+		hideObject(enemy_move[a]);
+		hideObject(enemy_shoot[a]);
+		hideObject(wound);
+	}
 }
 
 void detect()
 {
 	for (int i = 0; i < 3; i++)
 	{
-		if (playerX == enemyIconX[i] && playerY == enemyIconY[i] && fighting == 0)
+		if (playerX == enemyIconX[i] && playerY == enemyIconY[i] && fighting == 0 && stage == i - 1)
 		{
 			stopTimer(timer1);
 			moveable = 0;
 			stage = i;
+			
+			clearStage();
 			enterStage(stage);
+			fight();
 		}
 	}
 }
 
-void timerCallback(TimerID timer)
+void lose()
 {
+	showMessage("YOU LOST!");
+}
+
+void timerCallback(TimerID timer)
+{ 
 	if (timer == timer1)
 	{
 		locateObject(player, gamestage, playerX, playerY);
@@ -138,8 +160,24 @@ void timerCallback(TimerID timer)
 	{
 		hideObject(enemy_move[stage]);
 		showObject(enemy_shoot[stage]);
+		setTimer(deathTimer, 1.0f);
+		startTimer(deathTimer);
 	}
-
+	else if (timer == deathTimer)
+	{
+		if(win)
+		{
+			hideObject(enemyIcon[stage]);
+			fighting = 0;
+			moveable = 1;
+			win = 0;
+			enterScene(gamestage);
+		}
+		else
+		{
+			lose();
+		}
+	}
 }
 
 void Mapping() 
@@ -188,7 +226,7 @@ int main()
 	setMouseCallback(mouseCallback);
 
 	gamestage = createScene("");
-	backgound = createScene("background", "object/background.png");
+	background = createScene("background", "object/background.png");
 
 	player = createObject("object/player_icon.png", gamestage, playerX, playerY, true);
 	
@@ -199,9 +237,11 @@ int main()
 		sprintf(move, "object/enemy%d_move.png", i);
 		sprintf(shoot, "object/enemy%d_shoot.png", i);
 		enemyIcon[i] = createObject("object/enemy_icon1.png", gamestage, enemyIconX[i], enemyIconY[i], true);
-		enemy_stand[i] = createObject(stand, backgound, 150, 200, false);
-		enemy_move[i] = createObject(move, backgound, 150, 200, false);
-		enemy_shoot[i] = createObject(shoot, backgound, 150, 200, false);
+		enemy_stand[i] = createObject(stand, background, 150, 200, false);
+		enemy_move[i] = createObject(move, background, 150, 200, false);
+		enemy_shoot[i] = createObject(shoot, background, 150, 200, false);
+		blast = createObject("object/blast.png");
+		wound = createObject("object/wound.png");
 	}
 		
 	Mapping();
@@ -209,6 +249,7 @@ int main()
 	timer1 = createTimer(0.01f);
 	standTimer = createTimer(1.0f); 
 	moveTimer = createTimer(1.0f);
+	deathTimer = createTimer(1.0f);
 
 	startGame(gamestage);
 
